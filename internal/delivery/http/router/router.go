@@ -14,13 +14,6 @@ func SetupRoutes(exchangeRateHandler *handler.ExchangeRateHandler) *gin.Engine {
 	router.Use(middleware.Logger())
 	router.Use(middleware.CORS())
 
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "healthy",
-			"service": "exchange-rate-service",
-		})
-	})
-
 	api := router.Group("/api/")
 	{
 		api.GET("/latest", exchangeRateHandler.GetLatestRate)

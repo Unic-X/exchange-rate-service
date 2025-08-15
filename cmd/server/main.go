@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"exchange-rate-service/internal/config"
-	"exchange-rate-service/internal/delivery/http/handler"
 	"exchange-rate-service/internal/delivery/http/router"
+	"exchange-rate-service/internal/di"
 	"exchange-rate-service/pkg/logger"
 )
 
@@ -21,9 +21,9 @@ func main() {
 	logger.Info("Starting Exchange Rate Service...")
 	logger.Infof("Server will start on %s:%s", cfg.Server.Host, cfg.Server.Port)
 
-	exchangeRateHandler := handler.NewExchangeRateHandler()
+	container := di.NewContainer(cfg)
 
-	r := router.SetupRoutes(exchangeRateHandler)
+	r := router.SetupRoutes(container.ExchangeRateHandler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
@@ -31,6 +31,11 @@ func main() {
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startRateRefreshTicker(ctx, container, cfg.Cache.RefreshInterval)
 
 	go func() {
 		logger.Infof("Server starting on %s", server.Addr)
@@ -44,16 +49,47 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("shutting down server...")
+	logger.Info("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	// Cancel rate refresh ticker
+	cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	// Shutdown server gracefully
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Errorf("Server forced to shutdown: %v", err)
 	} else {
-		logger.Info("exited gracefully")
+		logger.Info("Server exited gracefully")
 	}
 
 	logger.Sync()
+}
+
+func startRateRefreshTicker(ctx context.Context, container *di.Container, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	logger.Infof("Starting rate refresh ticker with interval: %v", interval)
+
+	// Initial refresh on startup
+	if err := container.ExchangeRateService.RefreshRates(ctx); err != nil {
+		logger.Errorf("Initial rate refresh failed: %v", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info("Rate refresh ticker stopped")
+			return
+		case <-ticker.C:
+			logger.Info("Refreshing exchange rates...")
+			if err := container.ExchangeRateService.RefreshRates(ctx); err != nil {
+				logger.Errorf("Rate refresh failed: %v", err)
+			} else {
+				logger.Info("Exchange rates refreshed successfully")
+			}
+		}
+	}
 }
