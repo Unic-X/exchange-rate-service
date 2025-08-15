@@ -57,7 +57,9 @@ func (r *externalAPIRepository) GetLatestRate(ctx context.Context, fromCurrency,
 }
 
 func (r *externalAPIRepository) GetRateByDate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*entity.ExchangeRate, error) {
-	dateStr := date.Format("2006-01-02")
+	dateStr := date.Format("2006/01/02")
+
+	// Below API requires paid version so it should work in theory.
 	url := fmt.Sprintf("%s/%s/history/%s/%s", r.baseURL, r.apiKey, fromCurrency, dateStr)
 
 	resp, err := r.httpClient.Get(ctx, url, nil)

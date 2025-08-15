@@ -3,9 +3,8 @@ package entity
 import "time"
 
 type ExchangeRate struct {
-	Result            string             `json:"result"`
-	BaseCode          string             `json:"base_code"`
-	ConversionRates   map[string]float64 `json:"conversion_rates"`
-	TimeLastUpdateUTC string             `json:"time_last_update_utc"`
-	FetchedAt         time.Time          `json:"-"`
+	Result          string             `json:"result"`
+	BaseCode        string             `json:"base_code"`
+	ConversionRates map[string]float64 `json:"conversion_rates"`
+	FetchedAt       time.Time          `json:"-"`
 }

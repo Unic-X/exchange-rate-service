@@ -8,8 +8,6 @@ import (
 type Cache interface {
 	Set(key string, value any, ttl time.Duration) error
 	Get(key string) (any, bool)
-	Delete(key string) error
-	Clear() error
 }
 
 type cacheItem struct {
@@ -60,22 +58,6 @@ func (c *inMemoryCache) Get(key string) (any, bool) {
 	}
 
 	return item.value, true
-}
-
-func (c *inMemoryCache) Delete(key string) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	delete(c.items, key)
-	return nil
-}
-
-func (c *inMemoryCache) Clear() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	c.items = make(map[string]*cacheItem)
-	return nil
 }
 
 func (c *inMemoryCache) cleanup() {
