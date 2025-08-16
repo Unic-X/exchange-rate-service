@@ -233,21 +233,48 @@ Logs include request details, response times, and error messages for comprehensi
 - Input validation on all endpoints
 - Structured error responses without sensitive information exposure
 
+## 📊 Monitoring & Observability
+
+The service includes comprehensive monitoring with Prometheus and Grafana:
+
+### Metrics Collection
+- **HTTP Metrics**: Request rate, duration, status codes, in-flight requests
+- **Business Metrics**: Exchange rate requests by currency pair, cache hit/miss rates
+- **External API Metrics**: Response times and success rates for external API calls
+- **System Metrics**: Active connections, cache size
+
+### Monitoring Stack
+- **Prometheus**: Metrics collection and storage (`:9090`)
+- **Grafana**: Visualization and dashboards (`:3000`)
+- **Health Check**: Service health endpoint (`/health`)
+- **Metrics Endpoint**: Prometheus metrics (`/metrics`)
+
+### Quick Start Monitoring
+```bash
+# Start the full monitoring stack
+docker-compose up --build
+
+# Access monitoring interfaces
+# Grafana: http://localhost:3000 (admin/admin)
+# Prometheus: http://localhost:9090
+# Service metrics: http://localhost:8080/metrics
+```
+
+### Available Dashboards
+- **Exchange Rate Service Dashboard**: HTTP performance, cache metrics, business KPIs
+- **Request Analytics**: Response times, error rates, traffic patterns
+- **External API Monitoring**: Third-party service performance tracking
+
+### Key Metrics
+- `http_requests_total`: Total HTTP requests by method, endpoint, status
+- `http_request_duration_seconds`: Request latency histograms
+- `exchange_rate_requests_total`: Business requests by currency pair
+- `cache_hits_total` / `cache_misses_total`: Cache performance
+- `external_api_request_duration_seconds`: External API response times
+
 ## 🚀 Deployment
 
 The service is containerized and ready for deployment on any container orchestration platform:
 
 - **Docker**: Single container deployment
 - **Docker Compose**: Local development and testing
-- **Kubernetes**: Production-ready with proper resource limits
-
-## 📊 Monitoring
-
-The service includes:
-- Structured logging(currently only STDOUT) for log aggregation systems
-- Request/response timing metrics
-- Error tracking and reporting
-
----
-
-**Built with ❤️ using Go and Clean Architecture principles**
