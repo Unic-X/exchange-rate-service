@@ -23,7 +23,7 @@ func main() {
 
 	container := di.NewContainer(cfg)
 
-	r := router.SetupRoutes(container.ExchangeRateHandler)
+	r := router.SetupRoutes(container.HTTPHandlers)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),

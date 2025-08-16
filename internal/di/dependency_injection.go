@@ -2,7 +2,8 @@ package di
 
 import (
 	"exchange-rate-service/internal/config"
-	"exchange-rate-service/internal/delivery/http/handler"
+	"exchange-rate-service/internal/delivery/endpoint"
+	"exchange-rate-service/internal/delivery/http/transport"
 	"exchange-rate-service/internal/domain/repository"
 	"exchange-rate-service/internal/domain/service"
 	"exchange-rate-service/internal/infra/cache"
@@ -21,7 +22,8 @@ type Container struct {
 	InMemoryRepository    repository.ExchangeRateRepository
 	ExchangeRateService   service.ExchangeRateService
 	ExchangeRateUsecase   usecase.ExchangeRateUsecase
-	ExchangeRateHandler   *handler.ExchangeRateHandler
+	Endpoints             endpoint.Endpoints
+	HTTPHandlers          transport.Handlers
 }
 
 // NewContainer creates and wires all dependencies
@@ -52,8 +54,9 @@ func NewContainer(cfg *config.Config) *Container {
 	// Use case layer
 	container.ExchangeRateUsecase = usecase.NewExchangeRateUsecase(container.ExchangeRateService)
 
-	// Handler layer
-	container.ExchangeRateHandler = handler.NewExchangeRateHandler(container.ExchangeRateUsecase)
+	// go-kit Endpoints and HTTP Transport
+	container.Endpoints = endpoint.MakeEndpoints(container.ExchangeRateUsecase)
+	container.HTTPHandlers = transport.NewHandlers(container.Endpoints)
 
 	return container
 }
