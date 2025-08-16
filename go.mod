@@ -4,12 +4,13 @@ go 1.24.6
 
 require (
 	github.com/gin-gonic/gin v1.10.1
-	github.com/go-playground/validator/v10 v10.20.0
 	github.com/joho/godotenv v1.5.1
-	github.com/stretchr/testify v1.9.0
 )
 
-require go.uber.org/multierr v1.10.0 // indirect
+require (
+	github.com/go-playground/validator/v10 v10.20.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+)
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect

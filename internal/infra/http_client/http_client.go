@@ -12,7 +12,7 @@ import (
 
 type HTTPClient interface {
 	Get(ctx context.Context, url string, headers map[string]string) (*http.Response, error)
-	Post(ctx context.Context, url string, body interface{}, headers map[string]string) (*http.Response, error)
+	Post(ctx context.Context, url string, body any, headers map[string]string) (*http.Response, error)
 }
 
 type httpClient struct {
@@ -47,7 +47,7 @@ func (h *httpClient) Get(ctx context.Context, url string, headers map[string]str
 	return resp, nil
 }
 
-func (h *httpClient) Post(ctx context.Context, url string, body interface{}, headers map[string]string) (*http.Response, error) {
+func (h *httpClient) Post(ctx context.Context, url string, body any, headers map[string]string) (*http.Response, error) {
 	var bodyReader io.Reader
 
 	if body != nil {
