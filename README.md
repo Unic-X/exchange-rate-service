@@ -84,14 +84,19 @@ The service will be available at `http://localhost:8080`
 
 ### Using Docker Build
 
-1. **Build the Docker image**
+1. **Build the Docker image (Debug mode)**
 ```bash
 docker build -t exchange-rate-service .
 ```
 
-2. **Run the container**
+
+### Production Deployment
+
+For production deployments, use the optimized release build:
+
 ```bash
-docker run -p 8080:8080 --env-file .env exchange-rate-service
+# Using Docker Compose for production
+BUILD_MODE=release VERSION=1.0.0 docker-compose -f docker-compose.prod.yml up --build
 ```
 
 ### Local Development

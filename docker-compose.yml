@@ -1,6 +1,10 @@
 services:
   exchange-rate-service:
-    build: .
+    build: 
+      context: .
+      args:
+        BUILD_MODE: ${BUILD_MODE:-debug}
+        VERSION: ${VERSION:-dev}
     ports:
       - "8080:8080"
     env_file:
