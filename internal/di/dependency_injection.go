@@ -31,15 +31,21 @@ func NewContainer(cfg *config.Config) *Container {
 	}
 
 	// Infrastructure layer
-	container.HTTPClient = http_client.NewHTTPClient(cfg.ExternalAPI.Timeout)
+	container.HTTPClient = http_client.NewHTTPClient(cfg.FiatExternalAPI.Timeout)
 	container.Cache = cache.NewInMemoryCache(cfg.Cache.TTL)
 
-	// Repository layer
-	container.ExternalAPIRepository = api.NewExternalAPIRepository(
+	fiatRepo := api.NewExternalAPIRepository(
 		container.HTTPClient,
-		cfg.ExternalAPI.BaseURL,
-		cfg.ExternalAPI.Secret,
+		cfg.FiatExternalAPI.BaseURL,
+		cfg.FiatExternalAPI.Secret,
 	)
+	cryptoRepo := api.NewCoinlayerRepository(
+		container.HTTPClient,
+		cfg.CryptoExternalAPI.BaseURL,
+		cfg.CryptoExternalAPI.Secret,
+	)
+
+	container.ExternalAPIRepository = api.NewMultiExternalRepository(fiatRepo, cryptoRepo)
 	container.InMemoryRepository = inmemory.NewInMemoryRepository(container.Cache)
 
 	// Service layer
