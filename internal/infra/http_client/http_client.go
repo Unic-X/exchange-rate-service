@@ -16,8 +16,7 @@ type HTTPClient interface {
 }
 
 type httpClient struct {
-	client  *http.Client
-	timeout time.Duration
+	client *http.Client
 }
 
 func NewHTTPClient(timeout time.Duration) HTTPClient {
@@ -25,7 +24,6 @@ func NewHTTPClient(timeout time.Duration) HTTPClient {
 		client: &http.Client{
 			Timeout: timeout,
 		},
-		timeout: timeout,
 	}
 }
 

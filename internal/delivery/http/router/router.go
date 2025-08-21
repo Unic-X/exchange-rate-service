@@ -13,6 +13,7 @@ func SetupRoutes(exchangeRateHandler *handler.ExchangeRateHandler) *gin.Engine {
 
 	router.Use(gin.Recovery())
 	router.Use(middleware.Logger())
+	router.Use(middleware.JWT())
 	router.Use(middleware.CORS())
 	router.Use(middleware.PrometheusMetrics())
 

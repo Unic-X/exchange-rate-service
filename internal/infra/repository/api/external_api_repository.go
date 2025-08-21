@@ -7,8 +7,7 @@ import (
 	"io"
 	"time"
 
-	"exchange-rate-service/internal/domain/entity"
-	"exchange-rate-service/internal/domain/repository"
+	domain_exchange "exchange-rate-service/internal/domain/exchange"
 	"exchange-rate-service/internal/infra/http_client"
 	"exchange-rate-service/pkg/logger"
 )
@@ -19,7 +18,7 @@ type externalAPIRepository struct {
 	apiKey     string
 }
 
-func NewExternalAPIRepository(httpClient http_client.HTTPClient, baseURL, apiKey string) repository.ExchangeRateRepository {
+func NewExternalAPIRepository(httpClient http_client.HTTPClient, baseURL, apiKey string) domain_exchange.ExchangeRateExternalRepository {
 	return &externalAPIRepository{
 		httpClient: httpClient,
 		baseURL:    baseURL,
@@ -27,7 +26,7 @@ func NewExternalAPIRepository(httpClient http_client.HTTPClient, baseURL, apiKey
 	}
 }
 
-func (r *externalAPIRepository) GetLatestRate(ctx context.Context, fromCurrency, toCurrency string) (*entity.ExchangeRate, error) {
+func (r *externalAPIRepository) GetLatestRate(ctx context.Context, fromCurrency string) (*domain_exchange.ExchangeRate, error) {
 	url := fmt.Sprintf("%s/%s/latest/%s", r.baseURL, r.apiKey, fromCurrency)
 
 	resp, err := r.httpClient.Get(ctx, url, nil)
@@ -39,24 +38,19 @@ func (r *externalAPIRepository) GetLatestRate(ctx context.Context, fromCurrency,
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	var rate domain_exchange.ExchangeRate
+	if err := json.NewDecoder(resp.Body).Decode(&rate); err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var rate entity.ExchangeRate
-	if err := json.Unmarshal(body, &rate); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	rate.FetchedAt = time.Now()
+	now := time.Now()
+	rate.FetchedAt = now
 	logger.Infof("Fetched latest rate for %s from external API", fromCurrency)
 
 	return &rate, nil
 }
 
-func (r *externalAPIRepository) GetRateByDate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*entity.ExchangeRate, error) {
+func (r *externalAPIRepository) GetRateByDate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*domain_exchange.ExchangeRate, error) {
 	dateStr := date.Format("2006/01/02")
 
 	// Below API requires paid version so it should work in theory.
@@ -77,7 +71,7 @@ func (r *externalAPIRepository) GetRateByDate(ctx context.Context, fromCurrency,
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var rate entity.ExchangeRate
+	var rate domain_exchange.ExchangeRate
 	if err := json.Unmarshal(body, &rate); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -88,8 +82,8 @@ func (r *externalAPIRepository) GetRateByDate(ctx context.Context, fromCurrency,
 	return &rate, nil
 }
 
-func (r *externalAPIRepository) GetRatesForDateRange(ctx context.Context, fromCurrency, toCurrency string, startDate, endDate time.Time) ([]*entity.ExchangeRate, error) {
-	var rates []*entity.ExchangeRate
+func (r *externalAPIRepository) GetRatesForDateRange(ctx context.Context, fromCurrency, toCurrency string, startDate, endDate time.Time) ([]*domain_exchange.ExchangeRate, error) {
+	var rates []*domain_exchange.ExchangeRate
 
 	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
 		rate, err := r.GetRateByDate(ctx, fromCurrency, toCurrency, d)
@@ -101,20 +95,4 @@ func (r *externalAPIRepository) GetRatesForDateRange(ctx context.Context, fromCu
 	}
 
 	return rates, nil
-}
-
-func (r *externalAPIRepository) StoreRate(ctx context.Context, rate *entity.ExchangeRate) error {
-	return nil
-}
-
-func (r *externalAPIRepository) GetCachedRate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*entity.ExchangeRate, error) {
-	return nil, fmt.Errorf("no cached rate available")
-}
-
-func (r *externalAPIRepository) CacheRate(ctx context.Context, rate *entity.ExchangeRate, ttl time.Duration) error {
-	return nil
-}
-
-func (r *externalAPIRepository) RefreshLatestRates(ctx context.Context) error {
-	return nil
 }
