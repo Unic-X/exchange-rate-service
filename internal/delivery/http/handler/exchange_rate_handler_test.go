@@ -37,7 +37,7 @@ func TestGetLatestRate_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/latest?"+q.Encode(), nil)
 	c.Request = req
 
-	h.GetLatestRate(c)
+	h.ConvertAmount(c)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d, body=%s", w.Code, w.Body.String())
@@ -53,7 +53,7 @@ func TestGetLatestRate_Error(t *testing.T) {
 	q := url.Values{"from": {"EUR"}, "to": {"USD"}}
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/latest?"+q.Encode(), nil)
 
-	h.GetLatestRate(c)
+	h.ConvertAmount(c)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d, body=%s", w.Code, w.Body.String())
@@ -99,7 +99,7 @@ func TestGetHistoricalRate_InvalidDate(t *testing.T) {
 	q := url.Values{"from": {"EUR"}, "to": {"USD"}, "date": {"bad"}}
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/historical?"+q.Encode(), nil)
 
-	h.GetHistoricalRate(c)
+	h.ConvertAmount(c)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d, body=%s", w.Code, w.Body.String())
@@ -115,7 +115,7 @@ func TestGetHistoricalRate_TooOld(t *testing.T) {
 	q := url.Values{"from": {"EUR"}, "to": {"USD"}, "date": {old}}
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/historical?"+q.Encode(), nil)
 
-	h.GetHistoricalRate(c)
+	h.ConvertAmount(c)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d, body=%s", w.Code, w.Body.String())
@@ -132,7 +132,7 @@ func TestGetHistoricalRate_Success(t *testing.T) {
 	q := url.Values{"from": {"EUR"}, "to": {"USD"}, "date": {date}}
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/historical?"+q.Encode(), nil)
 
-	h.GetHistoricalRate(c)
+	h.ConvertAmount(c)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d, body=%s", w.Code, w.Body.String())

@@ -13,8 +13,7 @@ import (
 
 type ExchangeRateService interface {
 	GetLatestRate(ctx context.Context, from, to string) (float64, error)
-	GetHistoricalRate(ctx context.Context, from, to string, date time.Time) (float64, error)
-	ConvertAmount(ctx context.Context, from, to string, amount float64, date time.Time) (float64, float64, error)
+	ConvertAmount(ctx context.Context, from, to string, amount float64, fromDate, toDate time.Time) (float64, float64, float64, error)
 	RefreshRates(ctx context.Context) error
 	ValidateCurrencies(from, to string) error
 	ValidateDate(date time.Time, maxHistoricalDays int) error
@@ -100,7 +99,7 @@ func (s *exchangeRateService) GetLatestRate(ctx context.Context, from, to string
 	return 0, fmt.Errorf("conversion rate from %s to %s not found", from, to)
 }
 
-func (s *exchangeRateService) GetHistoricalRate(ctx context.Context, from, to string, date time.Time) (float64, error) {
+func (s *exchangeRateService) getHistoricalRate(ctx context.Context, from, to string, date time.Time) (float64, error) {
 	if err := s.ValidateCurrencies(from, to); err != nil {
 		return 0, err
 	}
@@ -135,32 +134,40 @@ func (s *exchangeRateService) GetHistoricalRate(ctx context.Context, from, to st
 	return 0, fmt.Errorf("conversion rate from %s to %s not found for date %s", from, to, date.Format("2006-01-02"))
 }
 
-func (s *exchangeRateService) ConvertAmount(ctx context.Context, from, to string, amount float64, date time.Time) (float64, float64, error) {
+func (s *exchangeRateService) resolveRateByDate(ctx context.Context, from, to string, targetDate time.Time) (float64, error) {
+	if targetDate.IsZero() {
+		return s.GetLatestRate(ctx, from, to)
+	}
+	return s.getHistoricalRate(ctx, from, to, targetDate)
+}
+
+func (s *exchangeRateService) ConvertAmount(ctx context.Context, from, to string, amount float64, fromDate, toDate time.Time) (float64, float64, float64, error) {
 	if amount <= 0 {
-		return 0, 0, errors.New("amount must be greater than 0")
+		return 0, 0, 0, errors.New("amount must be greater than 0")
 	}
 
-	var rate float64
+	var fromRate float64 // Rate of currencies at fromTargetDate
+	var toRate float64   // Rate of currencies at toTargetDate
 	var err error
 
-	// Use current date if date is today
-	if date.Format("2006-01-02") == time.Now().Format("2006-01-02") {
-		rate, err = s.GetLatestRate(ctx, from, to)
-	} else {
-		rate, err = s.GetHistoricalRate(ctx, from, to, date)
-	}
-
+	fromRate, err = s.resolveRateByDate(ctx, from, to, fromDate)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
-	convertedAmount := amount * rate
-	return rate, convertedAmount, nil
+	toRate, err = s.resolveRateByDate(ctx, from, to, toDate)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	convertedAmount := amount * fromRate
+
+	return fromRate, toRate, convertedAmount, nil
 }
 
 func (s *exchangeRateService) RefreshRates(ctx context.Context) error {
 	logger.Info("Starting rate refresh for all supported currencies")
-	
+
 	for baseCurrency := range entity.SupportedCurrencies {
 		rate, err := s.externalRepo.GetLatestRate(ctx, baseCurrency, "USD")
 		if err != nil {
@@ -176,3 +183,5 @@ func (s *exchangeRateService) RefreshRates(ctx context.Context) error {
 	logger.Info("Rate refresh completed")
 	return nil
 }
+
+// di for mock rates and combine the three endpoints into one and general refactoring

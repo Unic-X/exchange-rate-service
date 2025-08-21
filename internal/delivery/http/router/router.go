@@ -20,9 +20,8 @@ func SetupRoutes(exchangeRateHandler *handler.ExchangeRateHandler) *gin.Engine {
 
 	api := router.Group("/api/")
 	{
-		api.GET("/latest", exchangeRateHandler.GetLatestRate)
 		api.GET("/convert", exchangeRateHandler.ConvertAmount)
-		api.GET("/historical", exchangeRateHandler.GetHistoricalRate)
+
 	}
 
 	return router

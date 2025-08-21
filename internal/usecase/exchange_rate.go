@@ -8,9 +8,7 @@ import (
 )
 
 type ExchangeRateUsecase interface {
-	GetLatestRate(from, to string) (float64, error)
-	ConvertAmount(from, to string, amount float64, date time.Time) (float64, float64, error)
-	GetHistoricalRate(from, to string, date time.Time) (float64, error)
+	ConvertAmount(ctx context.Context, from, to string, amount float64, fromDate, toDate time.Time) (float64, float64, float64, error)
 }
 
 type exchangeRateUsecase struct {
@@ -23,17 +21,6 @@ func NewExchangeRateUsecase(service service.ExchangeRateService) ExchangeRateUse
 	}
 }
 
-func (u *exchangeRateUsecase) GetLatestRate(from, to string) (float64, error) {
-	ctx := context.Background()
-	return u.service.GetLatestRate(ctx, from, to)
-}
-
-func (u *exchangeRateUsecase) ConvertAmount(from, to string, amount float64, date time.Time) (float64, float64, error) {
-	ctx := context.Background()
-	return u.service.ConvertAmount(ctx, from, to, amount, date)
-}
-
-func (u *exchangeRateUsecase) GetHistoricalRate(from, to string, date time.Time) (float64, error) {
-	ctx := context.Background()
-	return u.service.GetHistoricalRate(ctx, from, to, date)
+func (u *exchangeRateUsecase) ConvertAmount(ctx context.Context, from, to string, amount float64, fromDate, toDate time.Time) (float64, float64, float64, error) {
+	return u.service.ConvertAmount(ctx, from, to, amount, fromDate, toDate)
 }
