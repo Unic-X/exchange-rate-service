@@ -9,7 +9,7 @@ import (
 
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		logMessage := "[%s] %s %s %d %s %s"
+		logMessage := "[%s] Method : %s Path : %s Status : %d Latency : %s Client IP : %s"
 		logArgs := []any{
 			param.TimeStamp.Format(time.RFC3339),
 			param.Method,
@@ -19,11 +19,7 @@ func Logger() gin.HandlerFunc {
 			param.ClientIP,
 		}
 
-		if param.StatusCode >= 400 {
-			logger.Errorf(logMessage, logArgs...)
-		} else {
-			logger.Infof(logMessage, logArgs...)
-		}
+		logger.Infof(logMessage, logArgs...)
 		return ""
 	})
 }
