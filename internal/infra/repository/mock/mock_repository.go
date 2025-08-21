@@ -2,34 +2,42 @@ package mock
 
 import (
 	"context"
-	"fmt"
+	"math/rand"
 	"time"
 
-	"exchange-rate-service/internal/domain/entity"
-	"exchange-rate-service/internal/domain/repository"
+	entity "exchange-rate-service/internal/domain/exchange"
 )
 
-type MockExchangeRateRepository struct{}
+type MockExchangeRateRepository struct {
+	//Doesn't need anything``
+}
 
-func NewMockExchangeRateRepository() repository.ExchangeRateRepository {
+func NewMockExchangeRateRepository() entity.ExchangeRateExternalRepository {
 	return &MockExchangeRateRepository{}
 }
 
-func (m *MockExchangeRateRepository) GetLatestRate(ctx context.Context, fromCurrency, toCurrency string) (*entity.ExchangeRate, error) {
+func (m *MockExchangeRateRepository) GetLatestRate(ctx context.Context, fromCurrency string) (*entity.ExchangeRate, error) {
+	conversionRates := make(map[string]float64)
+	conversionRates[fromCurrency] = 1.0
+
+	for currency := range entity.SupportedCurrencies {
+		conversionRates[currency] = (rand.Float64() * 5)
+	}
+
 	return &entity.ExchangeRate{
-		Result:   "success",
-		BaseCode: fromCurrency,
-		ConversionRates: map[string]float64{
-			toCurrency: 1.0,
-		},
-		FetchedAt: time.Now(),
+		Result:          "success",
+		BaseCode:        fromCurrency,
+		ConversionRates: conversionRates,
+		FetchedAt:       time.Now(),
 	}, nil
+
+	//HardCoded For now
 }
 
 func (m *MockExchangeRateRepository) GetRateByDate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*entity.ExchangeRate, error) {
 	d := date.UTC()
-	key := d.Year()*10000 + int(d.Month())*100 + d.Day()
-	variance := float64((key%7)-3) * 0.005
+	key := d.Year()*10000 + int(d.Month())*100 + d.Day()*10
+	variance := float64((key%7)-3) * 0.05
 	base := 0.95
 	rate := base + variance
 	if rate <= 0 {
@@ -53,20 +61,4 @@ func (m *MockExchangeRateRepository) GetRatesForDateRange(ctx context.Context, f
 		rates = append(rates, r)
 	}
 	return rates, nil
-}
-
-func (m *MockExchangeRateRepository) StoreRate(ctx context.Context, rate *entity.ExchangeRate) error {
-	return nil
-}
-
-func (m *MockExchangeRateRepository) GetCachedRate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*entity.ExchangeRate, error) {
-	return nil, fmt.Errorf("no cached rate available in mock")
-}
-
-func (m *MockExchangeRateRepository) CacheRate(ctx context.Context, rate *entity.ExchangeRate, ttl time.Duration) error {
-	return nil
-}
-
-func (m *MockExchangeRateRepository) RefreshLatestRates(ctx context.Context) error {
-	return nil
 }

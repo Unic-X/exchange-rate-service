@@ -5,20 +5,23 @@ import (
 	"strconv"
 	"time"
 
-	"exchange-rate-service/internal/usecase"
+	domain_exchange "exchange-rate-service/internal/domain/exchange"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ExchangeRateHandler struct {
-	usecase usecase.ExchangeRateUsecase
+	usecase domain_exchange.ExchangeRateUsercase
 }
 
-func NewExchangeRateHandler(u usecase.ExchangeRateUsecase) *ExchangeRateHandler {
+func NewExchangeRateHandler(u domain_exchange.ExchangeRateUsercase) *ExchangeRateHandler {
 	return &ExchangeRateHandler{usecase: u}
 }
 
 func ParseDate(dateStr string) (time.Time, error) {
+	if dateStr == "" {
+		return time.Time{}, nil
+	}
 	targetDate, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return time.Time{}, err
@@ -52,19 +55,22 @@ func (h *ExchangeRateHandler) ConvertAmount(c *gin.Context) {
 		return
 	}
 
-	fromRate, toRate, converted, err := h.usecase.ConvertAmount(c, from, to, amount, fromTargetDate, toTargetDate)
+	fromAmount, toAmount, fromRate, toRate, err := h.usecase.ConvertAmount(c, from, to, amount, fromTargetDate, toTargetDate)
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"from":             from,
-		"to":               to,
-		"original_amount":  amount,
-		"converted_amount": converted,
-		"from_rate":        fromRate,
-		"to_rate":          toRate,
-		"difference":       toRate - fromRate,
+		"from":              from,
+		"to":                to,
+		"original_amount":   amount,
+		"converted_at_from": fromAmount,
+		"converted_at_to":   toAmount,
+		"from_rate":         fromRate,
+		"to_rate":           toRate,
+		"from_date":         fromTargetDate,
+		"to_date":           toTargetDate,
 	})
 }

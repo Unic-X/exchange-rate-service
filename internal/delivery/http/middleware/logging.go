@@ -18,7 +18,6 @@ func Logger() gin.HandlerFunc {
 			param.Latency,
 			param.ClientIP,
 		}
-
 		logger.Infof(logMessage, logArgs...)
 		return ""
 	})
