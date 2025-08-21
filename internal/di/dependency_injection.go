@@ -9,6 +9,7 @@ import (
 	"exchange-rate-service/internal/infra/http_client"
 	"exchange-rate-service/internal/infra/repository/api"
 	"exchange-rate-service/internal/infra/repository/inmemory"
+	"exchange-rate-service/internal/infra/repository/mock"
 	"exchange-rate-service/internal/usecase"
 )
 
@@ -22,6 +23,7 @@ type Container struct {
 	ExchangeRateService   service.ExchangeRateService
 	ExchangeRateUsecase   usecase.ExchangeRateUsecase
 	ExchangeRateHandler   *handler.ExchangeRateHandler
+	MockRepository        repository.ExchangeRateRepository
 }
 
 // NewContainer creates and wires all dependencies
@@ -42,9 +44,10 @@ func NewContainer(cfg *config.Config) *Container {
 	)
 	container.InMemoryRepository = inmemory.NewInMemoryRepository(container.Cache)
 
+	container.MockRepository = mock.NewMockExchangeRateRepository()
 	// Service layer
 	container.ExchangeRateService = service.NewExchangeRateService(
-		container.ExternalAPIRepository,
+		container.MockRepository,
 		container.InMemoryRepository,
 		cfg.Cache.MaxHistoricalDays,
 	)
