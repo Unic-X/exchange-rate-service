@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig
-	ExternalAPI ExternalAPIConfig
-	Cache       CacheConfig
+	Server            ServerConfig
+	FiatExternalAPI   ExternalAPIConfig
+	CryptoExternalAPI ExternalAPIConfig
+	Cache             CacheConfig
 }
 
 type ServerConfig struct {
@@ -48,12 +49,19 @@ func Load() *Config {
 			ReadTimeout:  getDurationEnv("SERVER_READ_TIMEOUT", 30*time.Second),
 			WriteTimeout: getDurationEnv("SERVER_WRITE_TIMEOUT", 30*time.Second),
 		},
-		ExternalAPI: ExternalAPIConfig{
-			BaseURL:       getEnv("EXTERNAL_API_BASE_URL", "https://v6.exchangerate-api.com/v6"),
-			Secret:        getEnv("EXTERNAL_API_SECRET", "secret"),
-			Timeout:       getDurationEnv("EXTERNAL_API_TIMEOUT", 10*time.Second),
-			RetryAttempts: getIntEnv("EXTERNAL_API_RETRY_ATTEMPTS", 3),
-			RetryDelay:    getDurationEnv("EXTERNAL_API_RETRY_DELAY", 1*time.Second),
+		FiatExternalAPI: ExternalAPIConfig{
+			BaseURL:       getEnv("FIAT_EXTERNAL_API_BASE_URL", "https://v6.exchangerate-api.com/v6"),
+			Secret:        getEnv("FIAT_EXTERNAL_API_SECRET", "secret"),
+			Timeout:       getDurationEnv("FIAT_EXTERNAL_API_TIMEOUT", 10*time.Second),
+			RetryAttempts: getIntEnv("FIAT_EXTERNAL_API_RETRY_ATTEMPTS", 3),
+			RetryDelay:    getDurationEnv("FIAT_EXTERNAL_API_RETRY_DELAY", 1*time.Second),
+		},
+		CryptoExternalAPI: ExternalAPIConfig{
+			BaseURL:       getEnv("CRYPTO_EXTERNAL_API_BASE_URL", "http://api.coinlayer.com/"),
+			Secret:        getEnv("CRYPTO_EXTERNAL_API_SECRET", "secret"),
+			Timeout:       getDurationEnv("CRYPTO_EXTERNAL_API_TIMEOUT", 10*time.Second),
+			RetryAttempts: getIntEnv("CRYPTO_EXTERNAL_API_RETRY_ATTEMPTS", 3),
+			RetryDelay:    getDurationEnv("CRYPTO_EXTERNAL_API_RETRY_DELAY", 1*time.Second),
 		},
 		Cache: CacheConfig{
 			TTL:               getDurationEnv("CACHE_TTL", 1*time.Hour),
