@@ -34,21 +34,29 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	}
 
 	// Infrastructure layer
-	container.HTTPClient = http_client.NewHTTPClient(cfg.ExternalAPI.Timeout)
+	container.HTTPClient = http_client.NewHTTPClient(cfg.FiatExternalAPI.Timeout)
 	container.Cache = cache.NewInMemoryCache(cfg.Cache.TTL)
 
 	// Repository layer
-	container.ExternalAPIRepository = api.NewExternalAPIRepository(
+	fiatRepo := api.NewExternalAPIRepository(
 		container.HTTPClient,
-		cfg.ExternalAPI.BaseURL,
-		cfg.ExternalAPI.Secret,
+		cfg.FiatExternalAPI.BaseURL,
+		cfg.FiatExternalAPI.Secret,
+	)
+	cryptoRepo := api.NewCryptoAPIRepository(
+		container.HTTPClient,
+		cfg.CryptoExternalAPI.BaseURL,
+		cfg.CryptoExternalAPI.Secret,
 	)
 	container.InMemoryRepository = inmemory.NewInMemoryRepository(container.Cache)
 
-	container.MockRepository = mock.NewMockExchangeRateRepository()
-	// Service layer
+	mockRepository := mock.NewMockExchangeRateRepository()
+
+	container.ExternalAPIRepository = api.NewCompositeRepository(
+		fiatRepo, cryptoRepo, mockRepository,
+	)
 	container.ExchangeRateUseCase = usecase.NewExchangeRateService(
-		container.MockRepository,
+		container.ExternalAPIRepository,
 		container.InMemoryRepository,
 		cfg.Cache.MaxHistoricalDays,
 	)
