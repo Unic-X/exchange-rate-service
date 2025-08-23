@@ -6,8 +6,9 @@ import (
 	"time"
 
 	exchange "exchange-rate-service/internal/domain/exchange"
-	"exchange-rate-service/internal/infra/cache"
 	"exchange-rate-service/pkg/logger"
+
+	"exchange-rate-service/pkg/cache"
 )
 
 type inMemoryRepository struct {

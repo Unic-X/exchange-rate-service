@@ -1,9 +1,10 @@
-package usecase
+package exchange
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	domain_exchange "exchange-rate-service/internal/domain/exchange"
@@ -20,7 +21,7 @@ type exchangeRateUseCase struct {
 	maxHistoricalDays int
 }
 
-func NewExchangeRateService(
+func NewExchangeRateUseCase(
 	externalRepo domain_exchange.ExchangeRateExternalRepository,
 	cacheRepo domain_exchange.ExchangeRateCacheRepository,
 	maxHistoricalDays int,
@@ -134,15 +135,21 @@ func (s *exchangeRateUseCase) ConvertAmount(ctx context.Context, from, to string
 
 func (s *exchangeRateUseCase) RefreshRates(ctx context.Context) error {
 	logger.Info("Starting rate refresh for all supported currencies")
+	var wg sync.WaitGroup
 	for baseCurrency := range domain_exchange.SupportedCurrencies {
-		rate, err := s.externalRepo.GetLatestRate(ctx, baseCurrency)
-		if err != nil {
-			logger.Errorf("Failed to refresh rate for %s: %v", baseCurrency, err)
-			continue
-		}
-		if err := s.cacheRepo.StoreRate(ctx, rate); err != nil {
-			logger.Errorf("Failed to cache refreshed rate for %s: %v", baseCurrency, err)
-		}
+		wg.Add(1)
+		go func() {
+			rate, err := s.externalRepo.GetLatestRate(ctx, baseCurrency)
+			if err != nil {
+				logger.Errorf("Failed to refresh rate for %s: %v", baseCurrency, err)
+				wg.Done()
+				return
+			}
+			if err := s.cacheRepo.StoreRate(ctx, rate); err != nil {
+				logger.Errorf("Failed to cache refreshed rate for %s: %v", baseCurrency, err)
+			}
+			wg.Done()
+		}()
 	}
 	logger.Info("Rate refresh completed")
 	return nil

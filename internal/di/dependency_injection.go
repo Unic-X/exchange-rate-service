@@ -2,91 +2,91 @@ package di
 
 import (
 	"context"
-	"exchange-rate-service/internal/config"
+
 	"exchange-rate-service/internal/delivery/http/handler"
+	"exchange-rate-service/internal/domain/config"
 	domain_exchange "exchange-rate-service/internal/domain/exchange"
-	"exchange-rate-service/internal/infra/cache"
 	"exchange-rate-service/internal/infra/http_client"
 	"exchange-rate-service/internal/infra/repository/api"
 	"exchange-rate-service/internal/infra/repository/inmemory"
 	"exchange-rate-service/internal/infra/repository/mock"
-	"exchange-rate-service/internal/usecase"
-	"exchange-rate-service/pkg/logger"
-	"time"
+	usecase "exchange-rate-service/internal/usecase/exchange"
+
+	"exchange-rate-service/pkg/cache"
 )
 
-// Container holds all dependencies
-type Container struct {
-	Config                *config.Config
-	HTTPClient            http_client.HTTPClient
-	Cache                 cache.Cache
+type InfraContainer struct {
+	HTTPClient http_client.HTTPClient
+	Cache      cache.Cache
+}
+
+type RepositoryContainer struct {
 	ExternalAPIRepository domain_exchange.ExchangeRateExternalRepository
 	InMemoryRepository    domain_exchange.ExchangeRateCacheRepository
-	ExchangeRateUseCase   domain_exchange.ExchangeRateUsercase
-	ExchangeRateHandler   *handler.ExchangeRateHandler
 	MockRepository        domain_exchange.ExchangeRateExternalRepository
 }
 
-// NewContainer creates and wires all dependencies
-func NewContainer(ctx context.Context, cfg *config.Config) *Container {
-	container := &Container{
-		Config: cfg,
+type UseCaseContainer struct {
+	ExchangeRateUseCase domain_exchange.ExchangeRateUsercase
+}
+
+type HandlerContainer struct {
+	ExchangeRateHandler *handler.ExchangeRateHandler
+}
+
+type AppContainer struct {
+	Infra        *InfraContainer
+	Repositories *RepositoryContainer
+	UseCases     *UseCaseContainer
+	Handlers     *HandlerContainer
+	Config       *config.Config
+}
+
+func NewAppContainer(ctx context.Context, cfg *config.Config) *AppContainer {
+	infra := &InfraContainer{
+		HTTPClient: http_client.NewHTTPClient(cfg.FiatExternalAPI.Timeout),
+		Cache:      cache.NewInMemoryCache(cfg.Cache.TTL),
 	}
 
-	// Infrastructure layer
-	container.HTTPClient = http_client.NewHTTPClient(cfg.FiatExternalAPI.Timeout)
-	container.Cache = cache.NewInMemoryCache(cfg.Cache.TTL)
-
-	// Repository layer
 	fiatRepo := api.NewExternalAPIRepository(
-		container.HTTPClient,
+		infra.HTTPClient,
 		cfg.FiatExternalAPI.BaseURL,
 		cfg.FiatExternalAPI.Secret,
 	)
 	cryptoRepo := api.NewCryptoAPIRepository(
-		container.HTTPClient,
+		infra.HTTPClient,
 		cfg.CryptoExternalAPI.BaseURL,
 		cfg.CryptoExternalAPI.Secret,
 	)
-	container.InMemoryRepository = inmemory.NewInMemoryRepository(container.Cache)
-
 	mockRepository := mock.NewMockExchangeRateRepository()
 
-	container.ExternalAPIRepository = api.NewCompositeRepository(
-		fiatRepo, cryptoRepo, mockRepository,
-	)
-	container.ExchangeRateUseCase = usecase.NewExchangeRateService(
-		container.ExternalAPIRepository,
-		container.InMemoryRepository,
-		cfg.Cache.MaxHistoricalDays,
-	)
-	container.ExchangeRateHandler = handler.NewExchangeRateHandler(container.ExchangeRateUseCase)
-	go startRateRefreshTicker(container, ctx, cfg.Cache.RefreshInterval)
-	return container
-}
-
-func startRateRefreshTicker(container *Container, ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	logger.Infof("Starting rate refresh ticker with interval: %v", interval)
-
-	if err := container.ExchangeRateUseCase.RefreshRates(ctx); err != nil {
-		logger.Errorf("Initial rate refresh failed: %v", err)
+	repos := &RepositoryContainer{
+		ExternalAPIRepository: api.NewCompositeRepository(fiatRepo, cryptoRepo, mockRepository),
+		InMemoryRepository:    inmemory.NewInMemoryRepository(infra.Cache),
+		MockRepository:        mockRepository,
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Info("Rate refresh ticker stopped")
-			return
-		case <-ticker.C:
-			logger.Info("Refreshing exchange rates...")
-			if err := container.ExchangeRateUseCase.RefreshRates(ctx); err != nil {
-				logger.Errorf("Rate refresh failed: %v", err)
-			} else {
-				logger.Info("Exchange rates refreshed successfully")
-			}
-		}
+	useCases := &UseCaseContainer{
+		ExchangeRateUseCase: usecase.NewExchangeRateUseCase(
+			repos.ExternalAPIRepository,
+			repos.InMemoryRepository,
+			cfg.Cache.MaxHistoricalDays,
+		),
 	}
+
+	handlers := &HandlerContainer{
+		ExchangeRateHandler: handler.NewExchangeRateHandler(useCases.ExchangeRateUseCase),
+	}
+
+	app := &AppContainer{
+		Infra:        infra,
+		Repositories: repos,
+		UseCases:     useCases,
+		Handlers:     handlers,
+		Config:       cfg,
+	}
+
+	go usecase.StartRateRefreshTicker(useCases.ExchangeRateUseCase, ctx, cfg.Cache.RefreshInterval)
+
+	return app
 }
