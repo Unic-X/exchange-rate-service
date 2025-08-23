@@ -24,9 +24,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	container := di.NewContainer(ctx, cfg)
+	container := di.NewAppContainer(ctx, cfg)
 
-	r := router.SetupRoutes(container.ExchangeRateHandler)
+	r := router.SetupRoutes(container.Handlers.ExchangeRateHandler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
